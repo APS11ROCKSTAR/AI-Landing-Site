@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/all";
-import { BarChart3 } from "lucide-react";
-import { useRef } from "react";
+import { BarChart3, CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useRef, useState } from "react";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -21,6 +21,17 @@ function ContactUs() {
   const contentRef = useRef<HTMLDivElement>(null);
   const testimonialRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Form state management
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: '',
+    terms: false
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useGSAP(() => {
     if (headingRef.current) {
@@ -49,7 +60,86 @@ function ContactUs() {
     };
   }, []);
 
-  // Removed unused animation functions and state management
+  // Form handling functions
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      terms: checked
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Reset status
+    setSubmitStatus('idle');
+    setErrorMessage('');
+    
+    // Validate form
+    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
+      setSubmitStatus('error');
+      setErrorMessage('All fields are required');
+      return;
+    }
+
+    if (!formData.terms) {
+      setSubmitStatus('error');
+      setErrorMessage('Please accept the terms and conditions');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setSubmitStatus('error');
+      setErrorMessage('Please enter a valid email address');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setSubmitStatus('success');
+        setFormData({
+          name: '',
+          email: '',
+          message: '',
+          terms: false
+        });
+      } else {
+        setSubmitStatus('error');
+        setErrorMessage(result.error || 'Failed to send message. Please try again.');
+      }
+    } catch (error) {
+      setSubmitStatus('error');
+      setErrorMessage('Network error. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -85,6 +175,7 @@ function ContactUs() {
                 Use this form to contact Digital Analytics. All fields are required.
               </p>
               <form
+                onSubmit={handleSubmit}
                 className="space-y-4 sm:space-y-6"
                 aria-labelledby="contact-form-title"
                 aria-describedby="contact-form-description"
@@ -104,10 +195,13 @@ function ContactUs() {
                     placeholder="Enter your name"
                     className="focus:border-primary focus:ring-primary w-full border-gray-200 h-10 sm:h-11"
                     name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
                     autoComplete="name"
                     required
                     aria-required="true"
                     itemProp="name"
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -124,11 +218,14 @@ function ContactUs() {
                     placeholder="Enter your email"
                     className="focus:border-primary focus:ring-primary w-full border-gray-200 h-10 sm:h-11"
                     name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
                     autoComplete="email"
                     inputMode="email"
                     required
                     aria-required="true"
                     itemProp="email"
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -145,9 +242,12 @@ function ContactUs() {
                     rows={4}
                     className="focus:border-primary focus:ring-primary min-h-32 sm:min-h-40 w-full resize-none border-gray-200"
                     name="message"
+                    value={formData.message}
+                    onChange={handleInputChange}
                     required
                     aria-required="true"
                     itemProp="description"
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -155,18 +255,51 @@ function ContactUs() {
                   <Checkbox
                     id="terms"
                     className="mt-1"
+                    checked={formData.terms}
+                    onCheckedChange={handleCheckboxChange}
                     required
                     aria-required="true"
                     aria-describedby="terms-description"
+                    disabled={isSubmitting}
                   />
+                  <label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer">
+                    I agree to the terms and conditions and privacy policy
+                  </label>
                 </div>
+
+                {/* Status Messages */}
+                {submitStatus === 'success' && (
+                  <div className="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <p className="text-sm text-green-800">
+                      Thank you! Your message has been sent successfully. We'll get back to you soon.
+                    </p>
+                  </div>
+                )}
+
+                {submitStatus === 'error' && (
+                  <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    <p className="text-sm text-red-800">
+                      {errorMessage}
+                    </p>
+                  </div>
+                )}
 
                 <Button
                   type="submit"
-                  className="bg-primary hover:bg-primary/90 w-full py-3 sm:py-4 font-medium text-white text-sm sm:text-base"
+                  className="bg-primary hover:bg-primary/90 w-full py-3 sm:py-4 font-medium text-white text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Submit contact form"
+                  disabled={isSubmitting}
                 >
-                  Submit
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Submit'
+                  )}
                 </Button>
               </form>
             </div>
