@@ -25,30 +25,20 @@ function Navbar() {
       description: "Return to homepage",
     },
     {
-      name: "About",
-      href: "/about",
-      description: "Learn more about our company",
-    },
-    {
       name: "Services",
-      href: "/services",
+      href: "/#capabilities-heading",
       description: "Explore our comprehensive service offerings",
     },
-    // {
-    //   name: "Blog",
-    //   href: "/blog",
-    //   description: "Read our latest AI insights and research",
-    // },
-    // {
-    //   name: "Case Studies",
-    //   href: "/#case-studies",
-    //   description: "View our successful project implementations",
-    // },
-    // {
-    //   name: "Contact",
-    //   href: "/#contact",
-    //   description: "Get in touch with our team",
-    // },
+    {
+      name: "Process",
+      href: "/#process-heading",
+      description: "Learn about our proven transformation process",
+    },
+    {
+      name: "Contact",
+      href: "/#contact-heading",
+      description: "Get in touch with our team",
+    },
   ];
 
   const toggleMenu = () => {
@@ -61,6 +51,27 @@ function Navbar() {
     setActiveIndex(-1);
     // Return focus to menu button when closing
     buttonRef.current?.focus();
+  };
+
+  // Handle smooth scrolling to sections
+  const handleSectionClick = (href: string, e: React.MouseEvent) => {
+    if (href.startsWith('/#')) {
+      e.preventDefault();
+      const sectionId = href.substring(2); // Remove '/#' prefix
+      const section = document.getElementById(sectionId);
+      
+      if (section) {
+        section.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+      
+      // Close mobile menu if open
+      if (isMenuOpen) {
+        closeMenu();
+      }
+    }
   };
 
   // Handle keyboard navigation
@@ -243,6 +254,7 @@ function Navbar() {
                   <li key={link.name} role="none">
                     <Link
                       href={link.href}
+                      onClick={(e) => handleSectionClick(link.href, e)}
                       className={`text-text-heading hover:text-foreground focus:ring-ring rounded-md px-2 py-1 !text-sm font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none ${
                         isActive ? "text-foreground" : "text-foreground/70"
                       }`}
@@ -325,6 +337,10 @@ function Navbar() {
                         <li key={link.name} role="none">
                           <Link
                             href={link.href}
+                            onClick={(e) => {
+                              handleSectionClick(link.href, e);
+                              closeMenu();
+                            }}
                             className={`hover:bg-accent hover:text-accent-foreground focus:ring-none focus:ring-ring block rounded-md px-3 py-2 text-base font-medium transition-colors focus:ring-offset-2 focus:outline-none ${
                               activeIndex === index || isActive
                                 ? "bg-accent text-accent-foreground"
@@ -333,7 +349,6 @@ function Navbar() {
                             role="menuitem"
                             tabIndex={activeIndex === index ? 0 : -1}
                             aria-describedby={`mobile-nav-description-${index}`}
-                            onClick={closeMenu}
                             onKeyDown={(e) => handleKeyDown(e)}
                           >
                             {link.name}
